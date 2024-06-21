@@ -9,6 +9,7 @@ void sigHandler(int signalNumber)
     GPCRIT("Signal Caught! {}", signalNumber);
 
     CommonUtils::GeneralLogger::traceLogger->dump_backtrace();
+    exit(1);
 }
 
 
@@ -21,7 +22,7 @@ int main()
     CommonUtils::GeneralLogger logObject;
     logObject.init("StarterProj");
     
-    GPTRACE("Trace Test!");
     GPINFO("Hello Starter Project!");
+
     return 0;
 }
