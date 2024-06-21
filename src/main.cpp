@@ -15,13 +15,15 @@ void sigHandler(int signalNumber)
 
 int main()
 {
-    // Catch seg faults for logging purposes
-    // and initialize logger.  this should alway
+    // Catch seg faults for logging purposes, then
+    // initialize the logger.  this should alway
     // be done as soon as possible!
     signal(SIGSEGV, sigHandler);
     CommonUtils::GeneralLogger logObject;
     logObject.init("StarterProj");
     
+
+    // Now let's actually do something with our program!
     GPINFO("Hello Starter Project!");
 
     return 0;
