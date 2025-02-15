@@ -3,6 +3,10 @@ project(CommonUtils CXX)
 
 FetchContent_MakeAvailable(spdlog)
 
-add_library(CommonUtils SHARED GeneralLogger.cpp)
+file(GLOB CommonUtil_source     "*.cpp")
+file(GLOB CommonUtil_headers     "*.h")
+
+
+add_library(CommonUtils SHARED ${CommonUtil_source} ${CommonUtil_headers})
 target_link_libraries(CommonUtils PRIVATE spdlog)
 

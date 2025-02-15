@@ -14,9 +14,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(spdlog)
 
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG        release-1.10.0
+)
+
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+set(BUILD_GTEST ON CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(googletest)
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_subdirectory(CommonUtils)
+add_subdirectory(Tests)
 
 project(StarterProject CXX)
 
