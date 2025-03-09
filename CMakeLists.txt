@@ -35,5 +35,5 @@ project(StarterProject CXX)
 
 add_executable(StarterProjectMain src/main.cpp)
 
-target_link_libraries(StarterProjectMain PRIVATE CommonUtils spdlog)
+target_link_libraries(StarterProjectMain PRIVATE spdlog CommonUtils)
 
