@@ -4,16 +4,17 @@
 #include <chrono>
 #include <thread>
 
-TEST(DataHandlerTest, SignalDataNotifiesListeners) {
+TEST(DataHandlerTest, SignalDataNotifiesListeners) 
+{
     CommonUtils::DataHandler<int> handler;
 
-    auto listener1 = std::make_shared<CommonUtils::DataHandler<int>::Listener>([](const int& data) {
+    auto listener1 = [](const int& data) {
         EXPECT_EQ(data, 42);
-    });
+    };
 
-    auto listener2 = std::make_shared<CommonUtils::DataHandler<int>::Listener>([](const int& data) {
+    auto listener2 = [](const int& data) {
         EXPECT_EQ(data, 42);
-    });
+    };
 
     handler.registerListener(listener1);
     handler.registerListener(listener2);
@@ -24,21 +25,21 @@ TEST(DataHandlerTest, SignalDataNotifiesListeners) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
-TEST(DataHandlerTest, ExpiredListenersAreRemoved) {
+TEST(DataHandlerTest, ExpiredListenersAreRemoved) 
+{
     CommonUtils::DataHandler<int> handler;
 
-    auto listener1 = std::make_shared<CommonUtils::DataHandler<int>::Listener>([](const int& data) {
+    auto listener1 = [](const int& data) {
         EXPECT_EQ(data, 42);
-    });
+    };
 
-    handler.registerListener(listener1);
+    auto regId1 = handler.registerListener(listener1);
 
-    {
-        auto listener2 = std::make_shared<CommonUtils::DataHandler<int>::Listener>([](const int& data) {
-            EXPECT_EQ(data, 42);
-        });
-        handler.registerListener(listener2);
-    } // listener2 goes out of scope and should be removed
+    auto listener2 = [](const int& data) {
+        EXPECT_EQ(data, 42);
+    };
+
+    auto regId2 = handler.registerListener(listener2);
 
     handler.signalData(42);
 
@@ -46,10 +47,22 @@ TEST(DataHandlerTest, ExpiredListenersAreRemoved) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // Only one listener should remain
+    EXPECT_EQ(handler.watermarkInfo().first, 2);
+
+    handler.unregisterListener(regId1);
+
+    // Only one listener should remain
     EXPECT_EQ(handler.watermarkInfo().first, 1);
+
+    handler.unregisterListener(regId2);
+
+    // Only one listener should remain
+    EXPECT_EQ(handler.watermarkInfo().first, 0);
+
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+{
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

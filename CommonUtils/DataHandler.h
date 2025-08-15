@@ -1,5 +1,5 @@
 #include <functional>
-#include <vector>
+#include <map>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
@@ -65,14 +65,33 @@ public:
 
     /**
      * @brief Allows anyone to register a function to be called
-     *        when new data is signaled.  Listener functions are
-     *        passed by weak pointer to allow for easy 'unregistration'
+     *        when new data is signaled. an ID is returned
+     *        which can be used to unregister the listener.
+     * @note The listener function must not throw exceptions.
+     *       If it does, the DataHandler will terminate.
+     *       This is to ensure that the DataHandler can always
+     *       process data and notify listeners without being blocked.
+     * @return A registration ID that can be used to unregister the listener.
+     *         The ID is guaranteed to be unique for each listener.
      * @param listener
      */
-    void registerListener(std::weak_ptr<Listener> listener)
+    int registerListener(const Listener &listener)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        listeners_.push_back(listener);
+        nextListenerId_++;
+        listeners_[nextListenerId_] = listener;
+        return nextListenerId_;
+    }
+
+    /**
+     * @brief Unregisters a listener by its registration ID.
+     * @param id The registration ID returned by registerListener.
+     * @return true if a listener was removed, false otherwise.
+     */
+    void unregisterListener(int id)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        listeners_.erase(id);
     }
 
     /**
@@ -87,8 +106,10 @@ public:
     }
 
 private:
-    void processData() {
-        while (true) {
+    void processData() 
+    {
+        while (true) 
+        {
             T data;
             {
                 std::unique_lock<std::mutex> lock(mutex_);
@@ -103,19 +124,17 @@ private:
         }
     }
 
-    void notifyListeners(const T& data) {
+    void notifyListeners(const T& data) 
+    {
         std::lock_guard<std::mutex> lock(mutex_);
-        for (auto it = listeners_.begin(); it != listeners_.end(); ) {
-            if (auto listener = it->lock()) {
-                (*listener)(data);
-                ++it;
-            } else {
-                it = listeners_.erase(it);
-            }
+        for (auto listener : listeners_) 
+        {
+            listener.second(data);
         }
     }
 
-    std::vector<std::weak_ptr<Listener>> listeners_;
+    std::map<int, Listener> listeners_;
+    int nextListenerId_ = 123;
     std::queue<T> dataQueue_;
     std::mutex mutex_;
     std::condition_variable condVar_;
