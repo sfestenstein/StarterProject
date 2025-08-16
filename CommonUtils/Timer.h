@@ -1,3 +1,6 @@
+#ifndef COMMONUTILS_TIMER_H
+#define COMMONUTILS_TIMER_H
+
 #include <iostream>
 #include <thread>
 #include <functional>
@@ -53,3 +56,5 @@ private:
 };
 
 }
+
+#endif // COMMONUTILS_TIMER_H

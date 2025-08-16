@@ -1,3 +1,5 @@
+#ifndef COMMONUTILS_DATAHANDLER_H
+#define COMMONUTILS_DATAHANDLER_H
 #include <functional>
 #include <map>
 #include <queue>
@@ -142,3 +144,5 @@ private:
     std::atomic<bool> stopFlag_;
 };
 }
+
+#endif // COMMONUTILS_DATAHANDLER_H
