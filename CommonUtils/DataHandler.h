@@ -25,10 +25,9 @@ public:
     /**
      * @brief Constructor
      */
-    DataHandler() :
-        stopFlag_(false)
+    DataHandler() : _stopFlag(false)
     {
-        workerThread_ = std::thread(&DataHandler::processData, this);
+        _workerThread = std::thread(&DataHandler::processData, this);
     }
 
     /**
@@ -36,19 +35,23 @@ public:
      */
     ~DataHandler()
     {
+        _stopFlag = true;
+        _condVar.notify_all();
+        // Wait for the worker thread to finish processing
+        if (_workerThread.joinable())
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            stopFlag_ = true;
+            _workerThread.join();
         }
-        condVar_.notify_all();
-        if (workerThread_.joinable())
+
+        // Clear all listeners and data queue
         {
-            workerThread_.join();
+            std::lock_guard<std::mutex> lock(_listenersMutex);
+            _listeners.clear();
         }
-        listeners_.clear();
-        while (!dataQueue_.empty())
+
+        while (!_dataQueue.empty())
         {
-            dataQueue_.pop();
+            _dataQueue.pop();
         }
     }
 
@@ -58,30 +61,29 @@ public:
      */
     void signalData(const T& data)
     {
+        if (_stopFlag) return;
+
+        std::lock_guard<std::mutex> lock(_cvMutex);
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            dataQueue_.push(data);
+            _dataQueue.push(data);
         }
-        condVar_.notify_one();
+        _condVar.notify_one();
     }
 
     /**
      * @brief Allows anyone to register a function to be called
      *        when new data is signaled. an ID is returned
      *        which can be used to unregister the listener.
-     * @note The listener function must not throw exceptions.
-     *       If it does, the DataHandler will terminate.
-     *       This is to ensure that the DataHandler can always
-     *       process data and notify listeners without being blocked.
      * @return A registration ID that can be used to unregister the listener.
      *         The ID is guaranteed to be unique for each listener.
      * @param listener
      */
     int registerListener(const Listener &listener)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        if (_stopFlag) return -1; // Prevent registration after stop
+        std::lock_guard<std::mutex> lock(_listenersMutex);
         nextListenerId_++;
-        listeners_[nextListenerId_] = listener;
+        _listeners[nextListenerId_] = listener;
         return nextListenerId_;
     }
 
@@ -92,8 +94,9 @@ public:
      */
     void unregisterListener(int id)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        listeners_.erase(id);
+        if (_stopFlag) return; // Prevent deregistration after stop
+        std::lock_guard<std::mutex> lock(_listenersMutex);
+        _listeners.erase(id);
     }
 
     /**
@@ -103,24 +106,27 @@ public:
      *                   queue.
      */
     std::pair <size_t, size_t> watermarkInfo()
-    {
-        return {listeners_.size(), dataQueue_.size()};
+    {        
+        if (_stopFlag) return {0, 0};
+
+        std::lock_guard<std::mutex> lock(_listenersMutex);
+        return {_listeners.size(), _dataQueue.size()};
     }
 
 private:
     void processData() 
     {
-        while (true) 
+        while (!_stopFlag) 
         {
             T data;
             {
-                std::unique_lock<std::mutex> lock(mutex_);
-                condVar_.wait(lock, [this] { return !dataQueue_.empty() || stopFlag_; });
-                if (stopFlag_ && dataQueue_.empty()) {
+                std::unique_lock<std::mutex> lock(_cvMutex);
+                _condVar.wait(lock, [this] { return !_dataQueue.empty() || _stopFlag; });
+                if (_stopFlag && _dataQueue.empty()) {
                     return;
                 }
-                data = dataQueue_.front();
-                dataQueue_.pop();
+                data = _dataQueue.front();
+                _dataQueue.pop();
             }
             notifyListeners(data);
         }
@@ -128,20 +134,32 @@ private:
 
     void notifyListeners(const T& data) 
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        for (auto listener : listeners_) 
+        std::lock_guard<std::mutex> lock(_listenersMutex);
+        for (const auto &listener : _listeners) 
         {
-            listener.second(data);
+            try
+            {
+                listener.second(data);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "Listener threw an std::exception! " << e.what() << '\n';
+            }
+            catch(...)
+            {
+                std::cerr << "Listener threw an unknown exception!\n";
+            }
         }
     }
 
-    std::map<int, Listener> listeners_;
+    std::mutex _listenersMutex;
+    std::map<int, Listener> _listeners;
     int nextListenerId_ = 123;
-    std::queue<T> dataQueue_;
-    std::mutex mutex_;
-    std::condition_variable condVar_;
-    std::thread workerThread_;
-    std::atomic<bool> stopFlag_;
+    std::queue<T> _dataQueue;
+    std::mutex _cvMutex;
+    std::condition_variable _condVar;
+    std::thread _workerThread;
+    std::atomic<bool> _stopFlag;
 };
 }
 
