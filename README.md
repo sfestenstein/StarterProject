@@ -1,5 +1,7 @@
 # StarterProject
-A good place to start when creating a fresh C++ Project.
+A good place to start when creating a fresh C++ Project.  DEPRECATED!
+
+( please see https://github.com/sfestenstein/StarterCpp )
 
 SPDLOG is pulled in by default for advanced+friendly logging.
 
