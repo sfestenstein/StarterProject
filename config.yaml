@@ -1,0 +1,15 @@
+level: debug
+pattern: "%Y%m%d_%H%M%S.%e [%t][%s::%! %# %l] %v"
+sinks:
+  - type: console
+    level: debug
+    colored: true
+  - type: rotating_file
+    level: info
+    path: starterproject_logging_test1.log
+    max_file_size_bytes: 1024
+    max_files: 2
+  - type: custom
+    name: otel
+    endpoint: http://localhost:4317
+    service_name: starter-project

@@ -19,4 +19,5 @@ endif()
 
 # Prefer using the found GTest (or the one we fetched) in subdirs
 add_subdirectory(CommonUtils)
+add_subdirectory(Logging)
 
